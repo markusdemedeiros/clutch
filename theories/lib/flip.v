@@ -245,7 +245,7 @@ Section specs.
     rewrite /fn_bool_to_fin.
     rewrite bool_to_fin_to_bool.
     rewrite -!list_fmap_singleton -!fmap_app.
-    iFrame. 
+    iFrame.
   Qed.
 
   (** tape(n) ~ tape(n) *)
@@ -393,6 +393,59 @@ Section specs.
   Qed.
 
 End specs.
+
+Lemma exec_val_flip σ :
+  exec_val 5 (flip, σ) = fair_conv_comb (dret #true) (dret #false).
+Proof.
+  rewrite /flip /flipL /int_to_bool.
+  apply distr_ext=> b.
+
+  rewrite exec_val_Sn_not_val //=.
+  rewrite head_prim_step_eq /=; [|eauto with head_step].
+
+  rewrite dret_id_left /=.
+
+  reshape_prim_step (rand _ from _)%E.
+
+  rewrite dmap_comp /dmap.
+  rewrite -dbind_assoc.
+  setoid_rewrite dbind_ext_right at 1; last first.
+  { intros ?. rewrite dret_id_left //=. }
+
+  setoid_rewrite head_prim_step_eq; [|eauto with head_step].
+  simpl.
+
+  setoid_rewrite dbind_ext_right at 1; last first.
+  { intros ?. rewrite dret_id_left //=. }
+
+  setoid_rewrite (fill_prim_step_dbind [IfCtx _ _] (_ = _)%E); [|done].
+  setoid_rewrite head_prim_step_eq; [|eauto with head_step].
+  simpl.
+
+  setoid_rewrite dbind_ext_right at 1 ; last first.
+  { intros ?. rewrite dmap_dret //=. }
+
+  rewrite /dunifP dunif_fair_conv_comb.
+  rewrite /fair_conv_comb.
+  rewrite -dbind_assoc.
+
+  setoid_rewrite (dbind_ext_right _ _ (λ b, dret _)) at 1; last first.
+  { intros [].
+    + rewrite dret_id_left.
+      rewrite bool_decide_eq_false_2 //.
+      rewrite dret_id_left /=.
+      rewrite head_prim_step_eq /=; [|eauto with head_step].
+      rewrite dret_id_left //=.
+    + rewrite dret_id_left.
+      rewrite bool_decide_eq_true_2 //.
+      rewrite dret_id_left /=.
+      rewrite head_prim_step_eq /=; [|eauto with head_step].
+      rewrite dret_id_left //=. }
+
+  setoid_rewrite (dbind_ext_right _ _ (λ b, dret _)) at 2; last first.
+  { by intros []. }
+  done.
+Qed.
 
 Lemma tac_rel_allocBtape_l_simpl `{!clutchRGS Σ} K ℶ1 ℶ2 e t A E :
   e = fill K allocB →

@@ -45,16 +45,17 @@ Lemma head_step_support_eq_1 e1 e2 σ1 σ2 :
   head_step e1 σ1 (e2, σ2) = 1 → head_step_rel e1 σ1 e2 σ2.
 Proof. eapply head_step_support_eq; lra. Qed.
 
-(** The tactic [inv_head_step] performs inversion on hypotheses of the shape
-    [head_step]. The tactic will discharge head-reductions starting from values,
-    and simplifies hypothesis related to conversions from and to values, and
-    finite map operations. This tactic is slightly ad-hoc and tuned for proving
-    our lifting lemmas. *)
-
 Global Hint Extern 0 (head_reducible _ _) =>
-         eexists (_, _); eapply head_step_support_equiv_rel : head_step.
+         unshelve (eexists (_, _); eapply head_step_support_equiv_rel; by econstructor) : head_step.
+Global Hint Extern 0 (head_reducible (Rand (Val (LitV (LitInt _))) (Val (LitV LitUnit))) _) =>
+       eexists (Val (LitV 0%fin), _); eapply head_step_support_equiv_rel; by eapply RandNoTapeS : head_step.
+Global Hint Extern 0 (head_reducible (Rand (Val (LitV (LitInt _))) (Val (LitV (LitLbl ?α)))) _) =>
+       eexists (Val (LitV 0%fin), _); eapply head_step_support_equiv_rel : head_step.
+
 Global Hint Extern 1 (head_step _ _ _ > 0) =>
          eapply head_step_support_equiv_rel; econstructor : head_step.
+
+Global Hint Extern 0 (TCEq _ (Z.to_nat _ )) => rewrite Nat2Z.id : typeclass_instances.
 
 Ltac solve_step :=
   simpl;
@@ -64,4 +65,14 @@ Ltac solve_step :=
         [simplify_map_eq; solve_distr|eauto with head_step]
   | |- (head_step _ _).(pmf) _ = 1%R  => simplify_map_eq; solve_distr
   | |- (head_step _ _).(pmf) _ > 0%R  => eauto with head_step
+  end.
+
+Tactic Notation "reshape_prim_step" open_constr(efoc) :=
+  lazymatch goal with
+  | |- context[prim_step ?e _] =>
+      reshape_expr e
+        ltac:(fun K e' =>
+                unify e' efoc; 
+                rewrite (fill_prim_step_dbind K e') //;
+                rewrite head_prim_step_eq /=; [|eauto with head_step])
   end.

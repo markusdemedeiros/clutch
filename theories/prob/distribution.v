@@ -677,84 +677,92 @@ Next Obligation.
 (* Convex combinations *)
 Definition fair_conv_comb `{Countable A} (μ1 μ2 : distr A) : distr A :=
   dbind (λ b, if b then μ1 else μ2) fair_coin.
+Definition biased_conv_comb `{Countable A} (r : R) (Hr : 0 <= r <= 1) (μ1 μ2 : distr A) : distr A :=
+  dbind (λ (b : bool), if b then μ1 else μ2) (biased_coin r Hr).
 
-Section conv_prop.
-  Context `{Countable A, Countable B}.
+Lemma fair_conv_comb_pmf `{Countable A} (μ1 μ2 : distr A) (a : A) :
+  fair_conv_comb μ1 μ2 a = 0.5 * (μ1 a) + 0.5 * (μ2 a).
+Proof.
+  rewrite {1}/pmf /fair_coin_pmf /= /dbind_pmf.
+  rewrite (SeriesC_ext _ (λ b, (if bool_decide (b = true) then 0.5 * μ1 a else 0) +
+                                if bool_decide (b = false) then 0.5 * μ2 a else 0)).
+  2: { intros []; rewrite /=  {1}/pmf  /= /fair_coin_pmf; lra. }
+  erewrite SeriesC_plus; [|eapply ex_seriesC_singleton.. ].
+  rewrite 2!SeriesC_singleton /=. lra.
+Qed.
 
-  Lemma fair_conv_comb_pmf `{Countable D} (μ1 μ2 : distr D) (a : D) :
-    fair_conv_comb μ1 μ2 a = 0.5 * (μ1 a) + 0.5 * (μ2 a).
-  Proof.
-    rewrite {1}/pmf /fair_coin_pmf /= /dbind_pmf.
-    rewrite (SeriesC_ext _ (λ b, (if bool_decide (b = true) then 0.5 * μ1 a else 0) +
-                                  if bool_decide (b = false) then 0.5 * μ2 a else 0)).
-    2: { intros []; rewrite /= /pmf /fair_coin_pmf /= /fair_coin_pmf /=; lra. }
-    erewrite SeriesC_plus; [|eapply ex_seriesC_singleton.. ].
-    rewrite 2!SeriesC_singleton /=. lra.
-  Qed.
+Lemma biased_conv_comb_pmf `{Countable A} (μ1 μ2 : distr A) (a : A) (r : R) (Hr : 0 <= r <= 1) :
+  biased_conv_comb r Hr μ1 μ2 a = r * μ1 a + (1 - r) * μ2 a.
+Proof.
+  rewrite {1}/pmf /fair_coin_pmf /= /dbind_pmf.
+  rewrite (SeriesC_ext _ (λ b, (if bool_decide (b = true) then r * μ1 a else 0) +
+                                if bool_decide (b = false) then (1 - r) * μ2 a else 0)).
+  2: { intros []; rewrite /= {1}/pmf /=;  lra. }
+  erewrite SeriesC_plus; [|eapply ex_seriesC_singleton.. ].
+  rewrite 2!SeriesC_singleton /=. lra.
+Qed.
 
-  Definition dbind_fair_conv_comb (f1 f2 : A → distr B) (μ : distr A) :
-    dbind (λ a, fair_conv_comb (f1 a) (f2 a)) μ = fair_conv_comb (dbind f1 μ) (dbind f2 μ).
-  Proof.
-    apply distr_ext.
-    intro b.
-    rewrite {1}/pmf /= /dbind_pmf.
-    rewrite (fair_conv_comb_pmf (μ ≫= f1) (μ ≫= f2) b).
-    assert (forall a, μ a * fair_conv_comb (f1 a) (f2 a) b = 0.5 * (μ a * (f1 a) b + μ a * (f2 a) b)) as Heq.
-    { intro a; rewrite fair_conv_comb_pmf; lra. }
-    setoid_rewrite Heq.
-    rewrite SeriesC_scal_l.
-    rewrite <- Rmult_plus_distr_l.
-    rewrite {5 6}/pmf /= /dbind_pmf.
-    rewrite -> SeriesC_plus; auto.
-    (* TODO: Clean this up *)
-    + apply (ex_seriesC_le _ μ); [ | apply pmf_ex_seriesC].
-      intro a.
-      pose proof (pmf_pos μ a).
-      pose proof (pmf_pos (f1 a) b).
-      pose proof (pmf_le_1 μ a).
-      pose proof (pmf_le_1 (f1 a) b).
-      split.
-      ++ apply Rmult_le_pos; auto.
-      ++ rewrite <- (Rmult_1_r (μ a)).
-         apply Rmult_le_compat; lra.
-    + apply (ex_seriesC_le _ μ); [ | apply pmf_ex_seriesC].
-      intro a.
-      pose proof (pmf_pos μ a).
-      pose proof (pmf_pos (f2 a) b).
-      pose proof (pmf_le_1 μ a).
-      pose proof (pmf_le_1 (f2 a) b).
-      split.
-      ++ apply Rmult_le_pos; auto.
-      ++ rewrite <- (Rmult_1_r (μ a)).
-         apply Rmult_le_compat; lra.
-  Qed.
+Lemma dbind_fair_conv_comb `{Countable A, Countable B} (f1 f2 : A → distr B) (μ : distr A) :
+  dbind (λ a, fair_conv_comb (f1 a) (f2 a)) μ = fair_conv_comb (dbind f1 μ) (dbind f2 μ).
+Proof.
+  apply distr_ext.
+  intro b.
+  rewrite {1}/pmf /= /dbind_pmf.
+  rewrite (fair_conv_comb_pmf (μ ≫= f1) (μ ≫= f2) b).
+  assert (forall a, μ a * fair_conv_comb (f1 a) (f2 a) b = 0.5 * (μ a * (f1 a) b + μ a * (f2 a) b)) as Heq.
+  { intro a; rewrite fair_conv_comb_pmf; lra. }
+  setoid_rewrite Heq.
+  rewrite SeriesC_scal_l.
+  rewrite <- Rmult_plus_distr_l.
+  rewrite {5 6}/pmf /= /dbind_pmf.
+  rewrite -> SeriesC_plus; auto.
+  (* TODO: Clean this up *)
+  + apply (ex_seriesC_le _ μ); [ | apply pmf_ex_seriesC].
+    intro a.
+    pose proof (pmf_pos μ a).
+    pose proof (pmf_pos (f1 a) b).
+    pose proof (pmf_le_1 μ a).
+    pose proof (pmf_le_1 (f1 a) b).
+    split.
+    ++ apply Rmult_le_pos; auto.
+    ++ rewrite <- (Rmult_1_r (μ a)).
+       apply Rmult_le_compat; lra.
+  + apply (ex_seriesC_le _ μ); [ | apply pmf_ex_seriesC].
+    intro a.
+    pose proof (pmf_pos μ a).
+    pose proof (pmf_pos (f2 a) b).
+    pose proof (pmf_le_1 μ a).
+    pose proof (pmf_le_1 (f2 a) b).
+    split.
+    ++ apply Rmult_le_pos; auto.
+    ++ rewrite <- (Rmult_1_r (μ a)).
+       apply Rmult_le_compat; lra.
+Qed.
 
-  (* Helpful lemma to eliminate trivial equalities *)
-  Lemma dbind_dret_coin_zero (f : bool-> A) (a : A) :
-    (∀ b, f b ≠ a) ->
-    (dbind (λ b, dret (f b)) fair_coin) a = 0.
-  Proof.
-    intro.
-    rewrite /pmf/=/dbind_pmf.
-    apply SeriesC_0; intro.
-    rewrite /pmf/=/dret_pmf.
-    rewrite bool_decide_eq_false_2; auto; lra.
-  Qed.
+(* Helpful lemma to eliminate trivial equalities *)
+Lemma dbind_dret_coin_zero `{Countable A} (f : bool-> A) (a : A) :
+  (∀ b, f b ≠ a) ->
+  (dbind (λ b, dret (f b)) fair_coin) a = 0.
+Proof.
+  intro.
+  rewrite /pmf/=/dbind_pmf.
+  apply SeriesC_0; intro.
+  rewrite /pmf/=/dret_pmf.
+  rewrite bool_decide_eq_false_2; auto; lra.
+Qed.
 
-  Lemma dbind_dret_coin_nonzero (f : bool -> A) (a : A) `{Inj bool A (=) (=) f} :
-    (∃ b, f b = a) ->
-    (dbind (λ b, dret (f b)) fair_coin) a = 0.5 .
-  Proof.
-    intros Hex.
-    rewrite /pmf/=/dbind_pmf.
-    rewrite (SeriesC_ext _ (λ b, if bool_decide (f b = a) then 0.5 else 0)); last first.
-    - intro. rewrite /pmf/=/fair_coin_pmf/dret_pmf; case_bool_decide.
-      + rewrite bool_decide_eq_true_2; auto; lra.
-      + rewrite bool_decide_eq_false_2; auto; lra.
-    - apply SeriesC_singleton_inj; auto.
-  Qed.
-
-End conv_prop.
+Lemma dbind_dret_coin_nonzero `{Countable A} (f : bool -> A) (a : A) `{Inj bool A (=) (=) f} :
+  (∃ b, f b = a) ->
+  (dbind (λ b, dret (f b)) fair_coin) a = 0.5 .
+Proof.
+  intros Hex.
+  rewrite /pmf/=/dbind_pmf.
+  rewrite (SeriesC_ext _ (λ b, if bool_decide (f b = a) then 0.5 else 0)); last first.
+  - intro. rewrite /pmf/=/fair_coin_pmf/dret_pmf; case_bool_decide.
+    + rewrite bool_decide_eq_true_2; auto; lra.
+    + rewrite bool_decide_eq_false_2; auto; lra.
+  - apply SeriesC_singleton_inj; auto.
+Qed.
 
 
 (** * Monadic map *)
@@ -834,7 +842,7 @@ Section dmap.
     ¬ (∃ a, μ a > 0 ∧ f a = b) → dmap f μ b = 0.
   Proof. intros. rewrite /dmap dbind_dret_pmf_map_ne //. Qed.
 
-  Lemma dmap_rearrange `{Countable A} (μ1 μ2 : distr A) (f : A → A) `{Inj A A (=) (=) f} :
+  Lemma dmap_rearrange (μ1 μ2 : distr A) (f : A → A) `{Inj A A (=) (=) f} :
     (∀ a, μ1 a > 0 → ∃ a', f a' = a) →
     (∀ a, μ1 (f a) = μ2 a) →
     μ1 = dmap f μ2.
@@ -990,8 +998,8 @@ Section dzero.
 
   Lemma dzero_mass :
     SeriesC (@dzero A _ _) = 0.
-  Proof. rewrite SeriesC_0 //. Qed. 
-  
+  Proof. rewrite SeriesC_0 //. Qed.
+
   Lemma SeriesC_zero_dzero (μ : distr A) :
     SeriesC μ = 0 → μ = dzero.
   Proof.
@@ -1013,12 +1021,12 @@ Section dzero.
   Lemma dret_not_dzero (a : A) :
     dret a ≠ dzero.
   Proof.
-    intros Heq. 
+    intros Heq.
     assert (Ha: dret a a = dzero a) by rewrite Heq //.
     rewrite dret_1_1 // /pmf /dzero in Ha.
-    lra. 
-  Qed.     
-  
+    lra.
+  Qed.
+
   Context `{Countable B}.
 
   Lemma dbind_dzero_pmf (f : A → distr B) (b : B) :
@@ -1052,13 +1060,13 @@ Section dzero.
 End dzero.
 
 Lemma dmap_dzero_inv `{Countable A, Countable B}  (f : A → B) (μ : distr A) :
-  dmap f μ = dzero → μ = dzero. 
+  dmap f μ = dzero → μ = dzero.
 Proof.
   intros Hf.
   apply SeriesC_zero_dzero.
   rewrite -(dmap_mass _ f).
-  rewrite Hf dzero_mass //. 
-Qed. 
+  rewrite Hf dzero_mass //.
+Qed.
 
 Lemma distr_double_swap_rmarg_ex `{Countable A, Countable B, Countable B'} (f : A → distr (B * B')) (μ : distr A) b' :
   ex_seriesC (λ a : A, SeriesC (λ b : B, μ a * f a (b, b'))) ->
@@ -1562,11 +1570,11 @@ Section uniform.
       + rewrite dret_1_1 // dret_0 //=. lra.
       + intros i. inv_fin i.
   Qed.
-  
+
   (* To avoid the case [N = 0] where [dunif 0 = dzero] it is convenient
      sometimes convenient to use [N + 1] *)
   Definition dunifP (N : nat) : distr (fin (S N)) := dunif (S N).
-  
+
   Lemma dunifP_pos N n :
     dunifP N n > 0.
   Proof.
@@ -1585,9 +1593,9 @@ Section uniform.
     assert (Hunif : SeriesC (dunifP N) = 0).
     { rewrite Hf dzero_mass //. }
     rewrite dunifP_mass in Hunif.
-    lra. 
+    lra.
   Qed.
-  
+
 End uniform.
 
 Ltac inv_distr :=
