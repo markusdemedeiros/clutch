@@ -543,12 +543,12 @@ Section iter_markov.
 
   Definition iter_step (initial : mstate δ) (s : mstate δ * nat) : distr (mstate δ * nat) :=
     let '(a, n) := s in
-    match n with
-    | 0 => dzero
-    | S n =>
-        if bool_decide (is_final a) then dret (initial, n)
-        else a' ← step a; dret (a', S n)
-    end.
+    match to_final a, n  with
+    | Some _, 0 => dzero
+    | None, 0 => a' ← step a; dret (a', 0%nat)
+    | Some _, S n => a' ← step a; dret (a', n)
+    | None, S n => a' ← step a; dret (a', S n)
+  end.
 
   Definition iter_to_final (s : mstate δ * nat) : option (mstate_ret δ) :=
     let '(a, n) := s in
@@ -558,34 +558,26 @@ Section iter_markov.
   Proof.
     constructor.
     move=> [? n] /= [? ?] [? ?] .
-    destruct n; simplify_eq=>//.
+    destruct n; case_match; simplify_eq=>//.
   Qed.
 
   Definition iter_markov (a : mstate δ) : markov := Markov _ _ (iter_mixin a).
 
-  Lemma iter_markov_lim_exec n a :
-    lim_exec (δ := iter_markov a) (a, S n) =
-      lim_exec (δ := δ) a ≫= λ _, lim_exec (δ := iter_markov a) (a, n).
+
+
+  Lemma iter_markov_1 m a :
+    SeriesC (exec m a) = SeriesC (exec (δ := iter_markov a) m (a, 0%nat)).
   Proof.
-    apply distr_ext => b.
-    rewrite {2}/pmf /= /dbind_pmf.
-    rewrite 2!lim_exec_unfold.
-    setoid_rewrite lim_exec_unfold.
-    rewrite SeriesC_scal_r.
+    induction m.
+    { simpl. by case_match. }
+    destruct (to_final a) eqn:Heq.
+    { by repeat erewrite exec_is_final. }
+    do 2 (rewrite exec_Sn_not_final; [|auto]).
+    simpl.
+    rewrite Heq.
 
 
-
-
-  Admitted.
-
-  (* Lemma is_sup_seq_foo (h : nat → R) l1 l2 : *)
-  (*   is_sup_seq h l1 → *)
-  (*   l1 = l2  *)
-
-
-
-
-
+    Admitted.
 
   Lemma iter_markov_terminates (a : mstate δ) (n : nat) :
     SeriesC (lim_exec (δ := δ) a) = 1 →
@@ -622,6 +614,9 @@ Section iter_markov.
             destruct (H (mkposreal eps Heps0)) as [H1 [m Hfoo]].
             simpl in *.
             exists m.
+            eapply Rlt_le_trans; [done|].
+
+
             admit.
           - set (eps' := eps / 2).
             assert (0 < eps' <= 1).
