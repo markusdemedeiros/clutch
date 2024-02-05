@@ -69,23 +69,13 @@ Section adequacy.
     }
     clear.
     iIntros "!#" ([ε'' [e1 σ1]]). rewrite /Φ/F/exec_ub_pre.
-    iIntros "[ (%R & %ε1 & %ε2 & %Hred & % & %Hlift & H)| [ (%R & %ε1 & %ε2 & %Hred & (%r & %Hr) & % & %Hlift & H)| [H| [H | H]]]] %Hv".
+    iIntros "[ (%R & %ε1 & %ε2 & %Hred & % & %Hlift & H)| [H| [H | H]]] %Hv".
     - iApply step_fupdN_mono.
       { apply pure_mono.
         eapply UB_mon_grading. eauto. }
       rewrite exec_Sn_not_final; [|eauto].
       iApply ub_lift_dbind'.
       1,2 : iPureIntro; apply cond_nonneg.
-      + done.
-      + iIntros ([] ?).
-        by iMod ("H"  with "[//]").
-    - iApply step_fupdN_mono.
-      { apply pure_mono.
-        eapply UB_mon_grading; eauto. }
-      rewrite exec_Sn_not_final; [|eauto].
-      iApply ub_lift_dbind_adv'.
-      + iPureIntro; apply cond_nonneg.
-      + iPureIntro. exists r. split; auto. apply cond_nonneg.
       + done.
       + iIntros ([] ?).
         by iMod ("H"  with "[//]").

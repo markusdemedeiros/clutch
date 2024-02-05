@@ -131,6 +131,8 @@ Section integer_walk.
       excluded by virtue of the (S p) in the amp spec.
 
      *)
+    Admitted.
+  (* FIXME: macro
     wp_apply (wp_couple_rand_adv_comp1 _ _ _
                 ((IC εᵢ (S p)) + (AC εᵢ εₐ (L εᵢ - S p) (I_obligation_1 εᵢ (S p)) kwf))%NNR
                 (integer_walk_distr εᵢ εₐ (S p) kwf) with "[HcrAC HcrIC]").
@@ -195,9 +197,8 @@ Section integer_walk.
       simpl nonneg.
       (* holds because fR is <= 1 *)
       admit.
-
   Admitted.
-
+*)
 
   (* We can always run the checker with any bound on it's position (with no loss in progress) *)
   Lemma wp_checker_triv εᵢ εₐ l kwf E : forall p, I εᵢ εₐ l kwf p -∗ WP int_walk_checker #l @ E {{fun v => I εᵢ εₐ l kwf p ∗ ∃ b: bool, ⌜v = #b⌝}}.

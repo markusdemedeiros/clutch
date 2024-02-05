@@ -317,7 +317,7 @@ Section adequacy.
       iRevert (H).
       iApply (exec_ub_strong_ind (λ ε e σ, ⌜language.to_val e = None⌝ ={∅}=∗  ⌜total_ub_lift (lim_exec (e, σ)) φ ε⌝)%I with "[][$H]").
       iModIntro. clear e σ ε. iIntros (e σ ε) "H %Hval".
-      iDestruct "H" as "[H|[H|[H|[H|H]]]]".
+      iDestruct "H" as "[H|[H|[H|H]]]".
       + iDestruct "H" as "(%R & %ε1 & %ε2 & %Hred & %Hineq & %Hub & H)".
         rewrite lim_exec_step step_or_final_no_final.
         2: { rewrite /is_final. rewrite -eq_None_not_Some. simpl. by eapply reducible_not_val. }
@@ -345,31 +345,6 @@ Section adequacy.
             + rewrite <-Rmult_1_l. apply Rmult_le_compat_r.
               * apply cond_nonneg.
               * exact.
-        }
-        iIntros (a HR). iMod ("H" $! a (HR)) as "H".
-        destruct a.
-        iMod "H" as "%".
-        iPureIntro.
-        by apply H.
-      + iDestruct "H" as "(%R & %ε1 & %ε2 & %Hred & %Hbound & %Hineq & %Hub & H)".
-        rewrite lim_exec_step step_or_final_no_final.
-        2: { rewrite /is_final. rewrite -eq_None_not_Some. simpl. by eapply reducible_not_val. }
-        iAssert (∀ ρ2 : language.expr prob_lang * language.state prob_lang,
-          ⌜R ρ2⌝ ={∅}=∗
-          let
-          '(e2, σ2) := ρ2 in
-          |={∅}=>  ⌜total_ub_lift (lim_exec (e2, σ2)) φ (ε2 ρ2)⌝)%I with "[H]" as "H".
-        { iIntros (ρ2) "%Hρ2". iMod ("H" $! ρ2 Hρ2) as "H".
-          destruct ρ2. iMod "H" as "(?&?&H)".
-          iMod ("H" with "[$][$]"). iModIntro. iModIntro. done.
-        }
-        rewrite {2}/total_ub_lift.
-        iIntros (P HP).
-        setoid_rewrite prob_dbind.
-        iApply (fupd_mono _ _ (⌜∀ e, R e -> 1 - (ε2 e) <= prob (lim_exec e) P⌝)%I).
-        {
-          iIntros (HR). iPureIntro.
-          by eapply twp_step_fupd_total_ub_lift_prim_step.
         }
         iIntros (a HR). iMod ("H" $! a (HR)) as "H".
         destruct a.
