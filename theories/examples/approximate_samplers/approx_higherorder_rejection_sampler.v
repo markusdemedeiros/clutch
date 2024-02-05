@@ -218,7 +218,7 @@ Section higherorder_rand.
 
   Lemma rand_sampling_scheme_spec (n' m' : nat) (Hnm : (n' < m')%nat) E :
     ⊢ sampling_scheme_spec
-          (λ: "_", rand #m')%V
+          (λ: "_", randU#m')%V
           (λ: "sample", "sample" ≤ #n')%V
           (err_factor (S n') (S m'))
           (err_factor (S n') (S m'))
@@ -229,9 +229,7 @@ Section higherorder_rand.
     iStartProof; iSplit.
     - (* sampling rule *)
       iIntros (ε Φ) "!> Hcr HΦ"; wp_pures.
-  Admitted.
-  (* FIXME: macro
-      iApply (wp_couple_rand_adv_comp  m' _ _ ε (rand_ε2 n' m' ε) _ with "Hcr").
+      iApply (wp_couple_randU_adv_comp  m' _ _ ε (rand_ε2 n' m' ε) _ with "Hcr").
       { (* uniform bound *)
         eexists (nnreal_div ε (err_factor (S n') (S m'))); intros s.
         rewrite /rand_ε2.
@@ -271,7 +269,7 @@ Section higherorder_rand.
 
     - (* checking rule *)
       iIntros (s Φ) "!> Hcr HΦ"; wp_pures.
-      wp_apply (wp_rand_err_list_nat _ m' (seq (S n') ((S m') - (S n')))).
+      wp_apply (wp_randU_err_list_nat _ m' (seq (S n') ((S m') - (S n')))).
       iSplitL "Hcr".
       + (* credit accounting *)
         iApply (ec_spend_irrel with "Hcr").
@@ -294,7 +292,7 @@ Section higherorder_rand.
     Unshelve.
     { rewrite Nat2Z.id; apply TCEq_refl. }
   Qed.
-*)
+
 End higherorder_rand.
 
 
@@ -324,13 +322,11 @@ Section higherorder_flip2.
 
   Lemma flip_amplification (ε1 εh εt : nonnegreal) (Hmean : (εh + εt) = 2 * ε1 ) E :
     {{{ € ε1 }}}
-      rand #1 @ E
+      randU #1 @ E
     {{{ v, RET #v; ⌜(v = 0%nat) \/ (v = 1%nat) ⌝ ∗ € (scale_flip ε1 εh εt #v) }}}.
   Proof.
     iIntros (Φ) "Hcr HΦ".
-  Admitted.
-  (* FIXME: macro
-    iApply (wp_couple_rand_adv_comp 1%nat  _ _ ε1 (ε2_flip1 ε1 εh εt) _ with "Hcr").
+    iApply (wp_couple_randU_adv_comp 1%nat  _ _ ε1 (ε2_flip1 ε1 εh εt) _ with "Hcr").
     - (* uniform bound *)
       exists (εh + εt)%NNR; intros n.
       rewrite /ε2_flip1.
@@ -353,12 +349,10 @@ Section higherorder_flip2.
       Unshelve.
       { apply TCEq_refl. }
   Qed.
-*)
-
 
   Lemma flip2_sampling_scheme_spec E :
     ⊢ sampling_scheme_spec
-          (λ: "_", Pair (rand #1) (rand #1))
+          (λ: "_", Pair (randU #1) (randU #1))
           (λ: "sample", (((Fst "sample") = #1) && ((Snd "sample") = #1)))
           (nnreal_div (nnreal_nat 3%nat) (nnreal_nat 4%nat))
           (nnreal_div (nnreal_nat 3%nat) (nnreal_nat 4%nat))
@@ -375,7 +369,7 @@ Section higherorder_flip2.
       iIntros (v) "(%Hv&Hcr)".
       destruct Hv as [-> | ->].
       + (* first flip was zero, check is going to false and the second flip doesn't matter. *)
-        wp_bind (rand _)%E; iApply wp_rand; auto.
+        wp_bind (randU _)%E; iApply wp_randU; auto.
         iNext; iIntros (v') "_"; wp_pures; iModIntro; iApply "HΦ".
         iRight; iExists _.
         iSplitL "Hcr"; [iFrame|].
@@ -389,7 +383,7 @@ Section higherorder_flip2.
         replace (scale_flip 𝜀 _ _ _) with (𝜀 * nnreal_div (nnreal_nat 2) (nnreal_nat 3))%NNR; last first.
         { rewrite /scale_flip /flip_is_1 /=. by apply nnreal_ext. }
         remember (𝜀 * nnreal_div (nnreal_nat 2) (nnreal_nat 3))%NNR as 𝜀'.
-        wp_bind (rand #1 )%E.
+        wp_bind (randU #1 )%E.
         wp_apply (flip_amplification 𝜀' nnreal_zero (nnreal_mult 𝜀' (nnreal_nat 2)) with "Hcr").
         { simpl. lra. }
         iIntros (v) "(%Hv&Hcr)".
@@ -409,7 +403,7 @@ Section higherorder_flip2.
 
     - (* credit spending rule *)
       iIntros (s Φ) "!> Hcr HΦ"; wp_pures.
-      wp_bind (rand #1)%E.
+      wp_bind (randU #1)%E.
 
       (* give € 1 to the 0 flip, and € 1/2 to the 1 flip *)
       wp_apply (flip_amplification
@@ -423,8 +417,8 @@ Section higherorder_flip2.
         * rewrite /scale_flip /flip_is_1 /=; lra.
         * rewrite /to_val; done.
       +  (* we have € 1/2 so we can make the second flip be 1 too *)
-        wp_bind (rand #1)%E.
-        iApply (wp_rand_err _ _ 0%fin with "[Hcr HΦ]").
+        wp_bind (randU #1)%E.
+        iApply (wp_randU_err _ _ 0%fin with "[Hcr HΦ]").
         iSplitL "Hcr". { iApply (ec_spend_irrel with "Hcr"). rewrite /=; lra. }
         iIntros (v') "%Hv'".
         wp_pures; iModIntro; iApply "HΦ".

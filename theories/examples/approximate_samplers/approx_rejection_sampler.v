@@ -20,7 +20,7 @@ Section basic.
         (rec: "f" "tries_left" :=
            if: ("tries_left" - #1) < #0
             then NONE
-            else let: "next_sample" := (rand #m') in
+            else let: "next_sample" := (randU #m') in
                 if: ("next_sample" ≤ #n')
                 then SOME "next_sample"
                 else "f" ("tries_left" - #1))
@@ -32,7 +32,7 @@ Section basic.
     λ: "_",
       let: "do_sample" :=
         (rec: "f" "_" :=
-           let: "next_sample" := (rand #m') in
+           let: "next_sample" := (randU #m') in
            if: ("next_sample" ≤ #n')
             then SOME "next_sample"
             else "f" #())
@@ -51,7 +51,7 @@ Section basic.
     (* Induction will reach the base cse when S depth = 1 <=> depth = 0 *)
     iInduction depth as [|depth' Hdepth'] "IH".
     - wp_pures.
-      wp_apply (wp_rand_err_list_nat _ m' (seq (S n') ((S m') - (S n')))).
+      wp_apply (wp_randU_err_list_nat _ m' (seq (S n') ((S m') - (S n')))).
       iSplitL "Hcr".
       + iApply (ec_spend_irrel with "[$]").
         Opaque INR.
@@ -73,8 +73,7 @@ Section basic.
     - wp_pures.
       replace (bool_decide _) with false; last (symmetry; apply bool_decide_eq_false; lia).
       wp_pures.
-      (* FIXME: macro
-      wp_apply (wp_couple_rand_adv_comp _ _ _ _ (bdd_cf_sampling_error (S n') _ _) with "Hcr").
+      wp_apply (wp_couple_randU_adv_comp _ _ _ _ (bdd_cf_sampling_error (S n') _ _) with "Hcr").
       { exists 1. intros s. apply sample_err_wf; try lia. }
       { by apply sample_err_mean. }
       iIntros (sample') "Hcr".
@@ -86,9 +85,7 @@ Section basic.
         wp_bind (#_ - #_)%E; wp_pure.
         replace (S (S depth') - 1)%Z with (Z.of_nat (S depth')) by lia.
         wp_apply ("IH" with "Hcr HΦ").
-  Qed.
-*)
-      Admitted.
+  Admitted.
 
 
   (** (approximate) safety of the unbounded rejection sampler *)
@@ -103,7 +100,7 @@ Section basic.
 
     iInduction depth as [|depth' Hdepth'] "IH".
     - wp_pures.
-      wp_apply (wp_rand_err_list_nat _ _ (seq (S n') (S m' - S n'))).
+      wp_apply (wp_randU_err_list_nat _ _ (seq (S n') (S m' - S n'))).
       iSplitL "Hcr".
       + iApply (ec_spend_irrel with "[$]").
         rewrite /= Rmult_1_r.
@@ -122,8 +119,7 @@ Section basic.
           replace (S n' + (S m'-S n'))%nat with (S m') by lia.
           specialize (fin_to_nat_lt sample''); by lia.
     - wp_pures.
-      (* FIXME: macro
-      wp_apply (wp_couple_rand_adv_comp _ _ _ _ (bdd_cf_sampling_error (S n') _ _) with "Hcr").
+      wp_apply (wp_couple_randU_adv_comp _ _ _ _ (bdd_cf_sampling_error (S n') _ _) with "Hcr").
       { eexists _. intros s. apply sample_err_wf; try lia. }
       { pose P := (sample_err_mean n' m' Hnm' (bdd_cf_error (S n') (S m') _ Hnm)). by eapply P. }
       iIntros (sample') "Hcr".
@@ -134,8 +130,6 @@ Section basic.
         rewrite simplify_amp_err; last (apply Nat.ltb_nlt; by lia); try lia.
         wp_apply ("IH" with "Hcr HΦ").
   Qed.
-*)
-      Admitted.
 
 
   (* FIXME: maybe use errror_limit' from below with ε/2 *)

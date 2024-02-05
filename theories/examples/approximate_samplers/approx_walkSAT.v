@@ -36,7 +36,7 @@ Section higherorder_walkSAT.
        if: ("n" = #0)
        then NONE
        else
-         let: "b" := (rand #1 = #1) in
+         let: "b" := (randU #1 = #1) in
          let: "r" := ("mk_asn'" ("n" - #1)) in
          SOME ("b", "r"))%V.
   Definition mk_init_asn : val := (λ: "_", mk_init_asn' #N).
@@ -50,7 +50,7 @@ Section higherorder_walkSAT.
       iModIntro; iExists []; iPureIntro; split; [constructor | by simpl].
     - rewrite /mk_init_asn'.
       do 3 wp_pure.
-      wp_bind (rand _)%E; wp_apply wp_rand; eauto; iIntros (b) "%Hb".
+      wp_bind (randU _)%E; wp_apply wp_randU; eauto; iIntros (b) "%Hb".
       do 4 wp_pure.
       replace #(S M' - 1)%Z with #M'; [| do 2 f_equal; lia].
       wp_bind (RecV _ _ _ _).
@@ -466,7 +466,7 @@ Section higherorder_walkSAT.
   Definition resample_clause (c : clause) : val :=
     (λ: "l",
        let: "asn" := (! "l") in
-       let: "n" := clause_to_index c (rand #2) in
+       let: "n" := clause_to_index c (randU #2) in
        let: "b" := eval_asn "asn" "n" in
        "l" <- (update_asn "asn" "n" (~ "b")))%V.
 
@@ -593,11 +593,9 @@ Section higherorder_walkSAT.
     wp_apply (wp_load with "Hl").
     iIntros "Hl".
     wp_pures.
-    wp_bind (rand _)%E.
+    wp_bind (randU _)%E.
     replace (length m) with N in Hp; [|by destruct Hinv].
-    Admitted.
-  (* FIXME: macro
-    wp_apply (wp_couple_rand_adv_comp1 _ _ _ _ (εDistr_resampler _ _ _ target) with "Hε").
+    wp_apply (wp_couple_randU_adv_comp1 _ _ _ _ (εDistr_resampler _ _ _ target) with "Hε").
     {
       rewrite εDistr_mean.
       rewrite /εInv.
@@ -701,8 +699,6 @@ Section higherorder_walkSAT.
     { lia. }
     { constructor; last lia. constructor; lia. }
   Qed.
-
-*)
 
 
   (* running the checker *)

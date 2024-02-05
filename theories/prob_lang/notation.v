@@ -231,3 +231,11 @@ Notation "'letrec:' f x y .. z := e1 'in' e2" :=
   (at level 200, f at level 1, x,y,z at level 1, e1, e2 at level 200,
    format "'[' 'letrec:'  f  x y .. z :=  '/  ' '[' e1 ']'  'in'  '/' e2 ']'")
   : expr_scope.
+
+
+(* Sugar for a rand which uses a fresh local tape *)
+(* Not a Notation to avoid expansion by wp_pures *)
+Definition randU : val
+  := (λ: "sample_size",
+        let: "α" := alloc "sample_size" in
+        rand("α") "sample_size")%V.

@@ -223,7 +223,6 @@ Proof.
   iApply (twp_rand_err with "[$]").
 Qed.
 
-
 Lemma twp_rand_err_nat (N : nat) (z : Z) (m : nat) E Φ :
   TCEq N (Z.to_nat z) →
   € (nnreal_inv(nnreal_nat(N+1))) ∗
@@ -449,6 +448,7 @@ Proof.
       case_bool_decide; try lra.
     + apply ex_seriesC_finite.
 Qed.
+
 
 
 (** * Approximate Lifting *)
@@ -912,7 +912,7 @@ Proof.
   done.
 Qed.
 
-
+(** Planner rule (FIXME: relocate?) *)
 
 Lemma ec_spend_le_irrel ε1 ε2 : (ε2.(nonneg) <= ε1.(nonneg))%R → € ε1 -∗ € ε2.
 Proof. iIntros (?) "?". iApply ec_weaken; done. Qed.
@@ -1488,5 +1488,158 @@ Proof.
     + rewrite HS.
       iFrame.
 Qed.
+
+
+
+(** Rules for anonymous tapes (randU) *)
+
+Lemma twp_couple_randU_adv_comp (N : nat) z E (ε1 : nonnegreal) (ε2 : fin (S N) -> nonnegreal) :
+  TCEq N (Z.to_nat z) →
+  (exists r, ∀ n, (ε2 n <= r)%R) →
+  SeriesC (λ n, (1 / (S N)) * ε2 n)%R = (nonneg ε1) →
+  [[{ € ε1 }]] randU #z @ E [[{ n, RET #n; € (ε2 n) }]].
+Proof. Admitted.
+
+
+Lemma wp_couple_randU_adv_comp (N : nat) z E (ε1 : nonnegreal) (ε2 : fin (S N) -> nonnegreal) :
+  TCEq N (Z.to_nat z) →
+  (exists r, ∀ n, (ε2 n <= r)%R) →
+  SeriesC (λ n, (1 / (S N)) * ε2 n)%R = (nonneg ε1) →
+  {{{ € ε1 }}} randU #z @ E {{{ n, RET #n; € (ε2 n) }}}.
+Proof.
+  iIntros (? ? Hs Φ) "Hε HΦ".
+  rewrite /randU.
+  wp_pures.
+  wp_bind (alloc _)%E.
+  wp_apply (wp_alloc_tape); eauto.
+  iIntros (α) "Hα".
+  wp_pures.
+  wp_apply wp_presample_adv_comp; [eauto | eapply Hs |].
+  iFrame.
+  simpl; iIntros (?) "[Hcr Hα]".
+  iApply (wp_rand_tape with "[$]").
+  iIntros "!> _".
+  iApply ("HΦ" with "[$]").
+
+  (* FIXME: Move the above proof into the twp version once the twp work, and use the below proof here.
+  iIntros.
+  iApply (ub_twp_ub_wp_step' with "[$]").
+  wp_apply (twp_couple_rand_adv_comp with "[$]"); try done.
+  iIntros (?) "H1 H2". iModIntro.
+  iApply ("H2" with "[$]").
+   *)
+Qed.
+
+(* FIXME: Strictly stronger; inline into the regular version *)
+Lemma twp_couple_randU_adv_comp1 (N : nat) z E (ε1 : nonnegreal) (ε2 : fin (S N) -> nonnegreal) :
+  TCEq N (Z.to_nat z) →
+  SeriesC (λ n, (1 / (S N)) * ε2 n)%R = (nonneg ε1) →
+  [[{ € ε1 }]] randU #z @ E [[{ n, RET #n; € (ε2 n) }]].
+Proof.
+  iIntros (H1 H2).
+  eapply (twp_couple_randU_adv_comp _ _ _ ε1 ε2).
+  - apply H1.
+  - edestruct mean_constraint_ub as [H3 H4].
+    + apply H2.
+    + eexists _; eapply H4.
+  - apply H2.
+Qed.
+
+
+(* FIXME: Strictly stronger; Inline into the regular version *)
+Lemma wp_couple_randU_adv_comp1 (N : nat) z E (ε1 : nonnegreal) (ε2 : fin (S N) -> nonnegreal) :
+  TCEq N (Z.to_nat z) →
+  SeriesC (λ n, (1 / (S N)) * ε2 n)%R = (nonneg ε1) →
+  {{{ € ε1 }}} randU #z @ E {{{ n, RET #n; € (ε2 n) }}}.
+Proof.
+  iIntros (H1 H2).
+  eapply (wp_couple_randU_adv_comp _ _ _ ε1 ε2).
+  - apply H1.
+  - edestruct mean_constraint_ub as [H3 H4].
+    + apply H2.
+    + eexists _; eapply H4.
+  - apply H2.
+Qed.
+
+(* These rules are not conceptually any different than the ones above
+   It would be nice if we could prove the property that
+      WP rand #z @ E {{ Φ }} -∗ WP randU #z @ E {{ Φ }}
+   since then we'd get these for free, but since this is essentially
+   erasure I'm not so sure we can do that here. *)
+
+Lemma wp_randU (N : nat) (z : Z) E :
+  TCEq N (Z.to_nat z) →
+  {{{ True }}} randU #z @ E {{{ (n : fin (S N)), RET #n; True }}}.
+Proof. Admitted.
+
+
+Lemma wp_randU_err_list_int (N : nat) (z : Z) (zs : list Z) E Φ :
+  TCEq N (Z.to_nat z) →
+  € (nnreal_div (nnreal_nat (length zs)) (nnreal_nat(N+1))) ∗
+  (∀ x : fin (S N), ⌜Forall (λ m, (Z.of_nat $ fin_to_nat x) ≠ m) zs⌝ -∗ Φ #x)
+  ⊢ WP randU #z @ E {{ Φ }}.
+Proof.
+  iIntros (?) "[? ?]".
+  rewrite /randU.
+  wp_pures.
+  wp_apply (wp_alloc_tape); eauto.
+  iIntros (α) "Hα".
+  wp_pures.
+Admitted.
+
+
+Lemma twp_randU_err (N : nat) (z : Z) (m : fin (S N)) E Φ :
+  TCEq N (Z.to_nat z) →
+  € (nnreal_inv(nnreal_nat(N+1))) ∗
+  (∀ x, ⌜x ≠ m⌝ -∗ Φ #x)
+  ⊢ WP randU #z @ E [{ Φ }].
+Proof.
+Admitted.
+
+
+Lemma wp_randU_err (N : nat) (z : Z) (m : fin (S N)) E Φ :
+  TCEq N (Z.to_nat z) →
+  € (nnreal_inv(nnreal_nat(N+1))) ∗
+  (∀ x, ⌜x ≠ m⌝ -∗ Φ #x)
+  ⊢ WP randU #z @ E {{ Φ }}.
+Proof.
+Admitted.
+
+Lemma twp_randU_err_nat (N : nat) (z : Z) (m : nat) E Φ :
+  TCEq N (Z.to_nat z) →
+  € (nnreal_inv(nnreal_nat(N+1))) ∗
+  (∀ x : fin (S N), ⌜(fin_to_nat x) ≠ m⌝ -∗ Φ #x)
+  ⊢ WP randU #z @ E [{ Φ }].
+Proof.
+Admitted.
+
+Lemma wp_randU_err_nat (N : nat) (z : Z) (m : nat) E Φ :
+  TCEq N (Z.to_nat z) →
+  € (nnreal_inv(nnreal_nat(N+1))) ∗
+  (∀ x : fin (S N), ⌜(fin_to_nat x) ≠ m⌝ -∗ Φ #x)
+  ⊢ WP randU #z @ E {{ Φ }}.
+Proof. Admitted.
+
+Lemma twp_randU_err_list_nat (N : nat) (z : Z) (ns : list nat) E Φ :
+  TCEq N (Z.to_nat z) →
+  € (nnreal_div (nnreal_nat (length ns)) (nnreal_nat(N+1))) ∗
+  (∀ x : fin (S N), ⌜Forall (λ m, (fin_to_nat x) ≠ m) ns⌝ -∗ Φ #x)
+  ⊢ WP randU #z @ E [{ Φ }].
+Proof. Admitted.
+
+Lemma wp_randU_err_list_nat (N : nat) (z : Z) (ns : list nat) E Φ :
+  TCEq N (Z.to_nat z) →
+  € (nnreal_div (nnreal_nat (length ns)) (nnreal_nat(N+1))) ∗
+  (∀ x : fin (S N), ⌜Forall (λ m, (fin_to_nat x) ≠ m) ns⌝ -∗ Φ #x)
+  ⊢ WP randU #z @ E {{ Φ }}.
+Proof. Admitted.
+
+Lemma twp_randU_err_list_int (N : nat) (z : Z) (zs : list Z) E Φ :
+  TCEq N (Z.to_nat z) →
+  € (nnreal_div (nnreal_nat (length zs)) (nnreal_nat(N+1))) ∗
+  (∀ x : fin (S N), ⌜Forall (λ m, (Z.of_nat $ fin_to_nat x) ≠ m) zs⌝ -∗ Φ #x)
+  ⊢ WP randU #z @ E [{ Φ }].
+Proof. Admitted.
+
 
 End rules.
