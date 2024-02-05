@@ -50,8 +50,6 @@ Proof.
     intros Φ e. unfold exec_ub_pre.
     do 21 f_equiv.
     { by apply pair_ne. }
-    do 2 f_equiv.
-    by apply pair_ne.
 Qed.
 
 Local Definition ub_twp_def `{!irisGS Λ Σ} : Twp (iProp Σ) (expr Λ) (val Λ) () :=

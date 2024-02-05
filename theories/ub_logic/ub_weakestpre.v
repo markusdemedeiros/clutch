@@ -53,12 +53,12 @@ Section exec_ub.
           ⌜ (ε1 + ε2 <= ε)%R ⌝ ∗
           ⌜ub_lift (prim_step e1 σ1) R ε1⌝ ∗
             ∀ ρ2, ⌜ R ρ2 ⌝ ={∅}=∗ Z ε2 ρ2 ) ∨
-      (* [prim_step] with adv composition *)
+      (* [prim_step] with adv composition
       (∃ R (ε1 : nonnegreal) (ε2 : cfg Λ -> nonnegreal),
           ⌜reducible e1 σ1⌝ ∗
           ⌜ exists r, forall ρ, (ε2 ρ <= r)%R ⌝ ∗
           ⌜ (ε1 + SeriesC (λ ρ, (prim_step e1 σ1 ρ) * ε2(ρ)) <= ε)%R ⌝ ∗ ⌜ub_lift (prim_step e1 σ1) R ε1⌝ ∗
-            ∀ ρ2, ⌜ R ρ2 ⌝ ={∅}=∗ Z (ε2 ρ2) ρ2 ) ∨
+            ∀ ρ2, ⌜ R ρ2 ⌝ ={∅}=∗ Z (ε2 ρ2) ρ2 ) ∨ *)
       (* [state_step]  *)
       ([∨ list] α ∈ get_active σ1,
       (* We allow an explicit weakening of the grading, but maybe it is not needed *)
@@ -102,10 +102,9 @@ Section exec_ub.
     iIntros (Φ Ψ HNEΦ HNEΨ) "#Hwand".
     rewrite /exec_ub_pre.
     iIntros ((ε&(e1 & σ1))) "Hexec".
-    iDestruct "Hexec" as "[H | [H | [H | [H | H]]]]".
+    iDestruct "Hexec" as "[H | [H | [H | H]]]".
     - by iLeft.
-    - by iRight; iLeft.
-    - iRight; iRight; iLeft.
+    - iRight; iLeft.
       iInduction (get_active σ1) as [| l] "IH" forall "H".
       { rewrite big_orL_nil //. }
       rewrite !big_orL_cons.
@@ -116,7 +115,7 @@ Section exec_ub.
         iSplit; [try done|].
         iIntros. iApply "Hwand". by iApply "HΦ".
       + iRight. by iApply "IH".
-    - iRight; iRight; iRight; iLeft.
+    - iRight; iRight; iLeft.
       iInduction (get_active σ1) as [| l] "IH" forall "H".
       { rewrite big_orL_nil //. }
       rewrite !big_orL_cons.
@@ -128,7 +127,7 @@ Section exec_ub.
         iSplit; [try done|].
         iIntros. iApply "Hwand". by iApply "HΦ".
       + iRight. by iApply "IH".
-    - iRight; iRight; iRight; iRight.
+    - iRight; iRight; iRight.
       iDestruct "H" as "[%R [%ε1 [%ε2 (%Hsum & %Hlift & HΦ)]]]".
       iExists _, _, _.
       iSplitR; [try done|].
@@ -146,11 +145,6 @@ Section exec_ub.
            ⌜ (ε1 + ε2 <= ε)%R ⌝ ∗
            ⌜ub_lift (prim_step e1 σ1) R ε1⌝ ∗
             ∀ ρ2, ⌜ R ρ2 ⌝ ={∅}=∗ Z ε2 ρ2 ) ∨
-      (∃ R (ε1 : nonnegreal) (ε2 : cfg Λ -> nonnegreal),
-          ⌜reducible e1 σ1⌝ ∗
-          ⌜ exists r, forall ρ, (ε2 ρ <= r)%R ⌝ ∗
-          ⌜ (ε1 + SeriesC (λ ρ, (prim_step e1 σ1 ρ) * ε2(ρ)) <= ε)%R ⌝ ∗ ⌜ub_lift (prim_step e1 σ1) R ε1⌝ ∗
-            ∀ ρ2, ⌜ R ρ2 ⌝ ={∅}=∗ Z (ε2 ρ2) ρ2 ) ∨
       ([∨ list] α ∈ get_active σ1,
         (∃ R (ε1 ε2 : nonnegreal),
             ⌜ (ε1 + ε2 <= ε)%R ⌝ ∗
@@ -182,7 +176,7 @@ Section exec_ub.
     iPoseProof (least_fixpoint_ind (exec_ub_pre Z) Φ with "[]") as "H"; last first.
     { iApply ("H" with "H_ub"). }
     iIntros "!#" ([ε'' [? σ']]). rewrite /exec_ub_pre.
-    iIntros "[ (% & % & % & % & % & % & H) | [ (% & % & % & % & % & % & % & H) | [ H | [H | H] ]]] %ε3 %Hleq' /="; simpl in Hleq'.
+    iIntros "[ (% & % & % & % & % & % & H) | [ H | [H | H] ]] %ε3 %Hleq' /="; simpl in Hleq'.
     - rewrite least_fixpoint_unfold.
       iLeft. iExists _,_,_.
       iSplit; [done|].
@@ -190,11 +184,7 @@ Section exec_ub.
       iSplit; [done|].
       done.
     - rewrite least_fixpoint_unfold.
-      iRight;iLeft. iExists _,_,_.
-      iSplit; [|iSplit; [| iSplit; [| iSplit]]]; try done.
-      iPureIntro; etrans; done.
-    - rewrite least_fixpoint_unfold.
-      iRight; iRight; iLeft.
+      iRight; iLeft.
       iInduction (get_active σ') as [| l] "IH".
       { rewrite big_orL_nil //. }
       rewrite 2!big_orL_cons.
@@ -208,7 +198,7 @@ Section exec_ub.
         iPureIntro. simpl; lra.
       + iRight. by iApply ("IH" with "Ht").
     - rewrite least_fixpoint_unfold.
-      iRight; iRight; iRight; iLeft.
+      iRight; iRight; iLeft.
       iInduction (get_active σ') as [| l] "IH".
       { rewrite big_orL_nil //. }
       rewrite 2!big_orL_cons.
@@ -223,7 +213,7 @@ Section exec_ub.
         iPureIntro. simpl; lra.
       + iRight. by iApply ("IH" with "Ht").
     - rewrite least_fixpoint_unfold.
-      iRight; iRight; iRight; iRight.
+      iRight; iRight; iRight.
       iDestruct "H" as "[%R [%ε1 [%ε2 (%Hsum & %Hlift & HΦ)]]]".
       iExists R, ε1, ε2.
       iSplitR; [ iPureIntro; lra |].
@@ -248,7 +238,7 @@ Section exec_ub.
     iPoseProof (least_fixpoint_iter (exec_ub_pre Z1) Φ with "[]") as "H"; last first.
     { by iApply ("H" with "H_ub"). }
     iIntros "!#" ([ε'' [? σ']]). rewrite /exec_ub_pre.
-    iIntros "[ (% & % & % & % & % & % & H) | [ (% & % & % & % & % & % & % & H) | [H | [H | H]]] ] HZ /=".
+    iIntros "[ (% & % & % & % & % & % & H) | [H | [H | H]]] HZ /=".
     - rewrite least_fixpoint_unfold.
       iLeft. iExists _,_,_.
       iSplit; [done|].
@@ -260,17 +250,6 @@ Section exec_ub.
       iModIntro. iApply "HZ". eauto.
     - rewrite least_fixpoint_unfold.
       iRight; iLeft.
-      iExists _,_,_.
-      iSplit; [done|].
-      iSplit; [done|].
-      iSplit; [done|].
-      iSplit.
-      { iPureIntro.
-        by apply ub_lift_pos_R. }
-      iIntros ([] (?&?)). iMod ("H" with "[//]").
-      iModIntro. iApply "HZ". eauto.
-    - rewrite least_fixpoint_unfold.
-      iRight; iRight; iLeft.
       iInduction (get_active σ') as [| l] "IH".
       { rewrite big_orL_nil //. }
       rewrite 2!big_orL_cons.
@@ -282,7 +261,7 @@ Section exec_ub.
         by iApply ("H" with "[//]").
       + iRight. by iApply ("IH" with "Ht").
     - rewrite least_fixpoint_unfold.
-      iRight; iRight; iRight; iLeft.
+      iRight; iRight; iLeft.
       iInduction (get_active σ') as [| l] "IH".
       { rewrite big_orL_nil //. }
       rewrite 2!big_orL_cons.
@@ -295,7 +274,7 @@ Section exec_ub.
         by iApply ("H" with "[//]").
       + iRight. by iApply ("IH" with "Ht").
     - rewrite least_fixpoint_unfold.
-      iRight; iRight; iRight; iRight.
+      iRight; iRight; iRight.
       iDestruct "H" as "[%R [%ε1 [%ε2 (%Hsum & %Hlift & HΦ)]]]".
       iExists R, ε1, ε2.
       iSplitR; [iPureIntro; lra|].
@@ -343,7 +322,7 @@ Section exec_ub.
                  with "[]") as "H"; last first.
     { iIntros (?). iApply ("H" $! (_, (_, _)) with "Hub [//]"). }
     iIntros "!#" ([ε' [? σ']]). rewrite /exec_ub_pre.
-    iIntros "[(% & % & % & % & % & % & H) | [ (% & % & % & % & (%r & %Hr) & % & % & H) | [H | [H | H]]]] %Hv'".
+    iIntros "[(% & % & % & % & % & % & H) | [H | [H | H]]] %Hv'".
     - rewrite least_fixpoint_unfold.
       iLeft. simpl.
       iExists (λ '(e2, σ2), ∃ e2', e2 = K e2' ∧ R2 (e2', σ2)),_,_.
@@ -363,102 +342,8 @@ Section exec_ub.
        }
       iIntros ([] (? & -> & ?)).
       by iMod ("H" with "[//]").
-    - rewrite least_fixpoint_unfold.
-      iRight; iLeft. simpl.
-      destruct (partial_inv_fun K) as (Kinv & HKinv).
-      assert (forall e e', Kinv e' = Some e -> K e = e') as HKinv1; [intros; by apply HKinv |].
-      assert (forall e e', Kinv e = None -> K e' ≠ e) as HKinv2; [intros; by apply HKinv |].
-      assert (forall e, Kinv (K e) = Some e) as HKinv3.
-      { intro e.
-        destruct (Kinv (K e)) eqn:H3.
-        - apply HKinv1 in H3. f_equal. by apply fill_inj.
-        - eapply (HKinv2 _ e) in H3. done. }
-      set (ε3 := (λ '(e,σ), from_option (λ e', ε2 (e',σ)) nnreal_zero (Kinv e))).
-      assert (forall e2 σ2, ε3 (K e2, σ2) = ε2 (e2, σ2)) as Haux.
-      {
-        intros e2 σ2.
-        rewrite /ε3 HKinv3 //.
-      }
-      iExists (λ '(e2, σ2), ∃ e2', e2 = K e2' ∧ R2 (e2', σ2)),_,ε3.
-      iSplit; [iPureIntro; by apply reducible_fill|].
-      iSplit.
-      {
-        iPureIntro. exists r. intros (e&σ). rewrite /ε3.
-        destruct (Kinv e); simpl; try real_solver.
-        etrans; [ | eapply (Hr (e, σ)); eauto]. apply cond_nonneg.
-      }
-      iSplit; [ | iSplit].
-      2:{ iPureIntro.
-        rewrite <- Rplus_0_r.
-        rewrite fill_dmap //=.
-        eapply (ub_lift_dbind _ _ R2).
-        - eapply ub_nonneg_grad; eauto.
-        - lra.
-        - intros [] ?? =>/=.
-          apply ub_lift_dret.
-          eauto.
-        - auto.
-       }
-      + iPureIntro.
-        etrans; [ | apply H1].
-        apply Rplus_le_compat_l.
-        transitivity (SeriesC (λ '(e,σ), (prim_step (K o) σ' (K e, σ) * ε3 (K e, σ))%R)).
-        * etrans; [ | eapply (SeriesC_le_inj _ (λ '(e,σ), (Kinv e ≫= (λ e', Some (e',σ)))))].
-          ** apply SeriesC_le.
-             *** intros (e & σ); simpl; split.
-                 **** apply Rmult_le_pos; auto.
-                      apply cond_nonneg.
-                 **** destruct (Kinv e) eqn:He; simpl.
-                      ***** rewrite (HKinv1 _ _ He).
-                            rewrite He /from_option //.
-                      ***** destruct (decide (prim_step (K o) σ' (e, σ) > 0)%R) as [Hgt | Hngt].
-                            -- epose proof (fill_step_inv _ _ _ _ _ Hgt) as (e2' & (H3&?)).
-                               by destruct (HKinv2 e e2' He).
-                            --  apply Rnot_gt_le in Hngt.
-                                assert (prim_step (K o) σ' (e, σ) = 0); [by apply Rle_antisym | ].
-                                lra.
-            *** apply (ex_seriesC_le _ (λ '(e, σ), (prim_step (K o) σ' (e, σ) * ε3 (e, σ))%R)).
-                **** intros (e & σ); simpl; split.
-                     ***** destruct (Kinv e); simpl; try lra.
-                           apply Rmult_le_pos; auto.
-                           destruct (Kinv _); simpl; try lra.
-                           apply cond_nonneg.
-                     ***** destruct (Kinv e) eqn:He; simpl; try real_solver.
-                           rewrite HKinv3 /= (HKinv1 _ _ He) //.
-                **** apply (ex_seriesC_le _ (λ ρ, ((prim_step (K o) σ' ρ ) * r)%R)); [ | apply ex_seriesC_scal_r; auto].
-                     intros (e&σ); split.
-                     ***** apply Rmult_le_pos; auto.
-                           apply cond_nonneg.
-                     ***** rewrite /ε3. destruct (Kinv e); simpl; try real_solver.
-                           apply Rmult_le_compat_l; auto.
-                           etrans; [ | eapply (Hr (e, σ)); eauto]. apply cond_nonneg.
-         ** intros [].
-            apply Rmult_le_pos; auto.
-            apply cond_nonneg.
-         ** intros (e3&σ3) (e4&σ4) (e5&σ5) ? ?.
-            destruct (Kinv e3) eqn:He3; destruct (Kinv e4) eqn:He4; simpl in *; simplify_eq.
-            f_equal; auto.
-            rewrite -(HKinv1 _ _ He3).
-            by rewrite -(HKinv1 _ _ He4).
-         ** apply (ex_seriesC_le _ (λ '(e, σ), ((prim_step (K o) σ' (K e, σ)) * r)%R)).
-            *** intros (e&σ); split.
-                **** apply Rmult_le_pos; auto.
-                     apply cond_nonneg.
-                **** rewrite /ε3 HKinv3 /=. real_solver.
-            *** apply (ex_seriesC_ext (λ ρ, ((prim_step o σ' ρ) * r)%R)); auto.
-                **** intros []. apply Rmult_eq_compat_r. by apply fill_step_prob.
-                **** by apply ex_seriesC_scal_r.
-        * right. apply SeriesC_ext.
-          intros (e&σ).
-          rewrite Haux.
-          f_equal; auto.
-          symmetry; by apply fill_step_prob.
-      + iIntros ([] (? & -> & ?)).
-        iMod ("H" with "[//]").
-        by rewrite Haux.
-       Unshelve. auto.
     - rewrite least_fixpoint_unfold /=.
-      iRight; iRight; iLeft.
+      iRight; iLeft.
       iInduction (get_active σ') as [| l] "IH".
       { rewrite big_orL_nil //. }
       rewrite 2!big_orL_cons.
@@ -470,7 +355,7 @@ Section exec_ub.
         iIntros. by iApply ("H" with "[//]").
       + iRight. by iApply ("IH" with "Ht").
     - rewrite least_fixpoint_unfold; simpl.
-      iRight; iRight; iRight; iLeft.
+      iRight; iRight; iLeft.
       (* from above (combine?)*)
       destruct (partial_inv_fun K) as (Kinv & HKinv).
       assert (forall e e', Kinv e' = Some e -> K e = e') as HKinv1; [intros; by apply HKinv |].
@@ -524,7 +409,7 @@ Section exec_ub.
           by simpl in Hv'.
       + iRight. by iApply ("IH" with "Ht").
     - rewrite least_fixpoint_unfold.
-      iRight; iRight; iRight; iRight.
+      iRight; iRight; iRight.
       iDestruct "H" as "[%R [%ε1 [%ε2 (%Hsum & %Hlift & HΦ)]]]".
       iExists R, ε1, ε2.
       iSplitR; [iPureIntro; simpl; lra|].
@@ -548,6 +433,7 @@ Section exec_ub.
   Qed.
 
 
+  (*
   Lemma exec_ub_adv_comp e1 σ1 Z (ε : nonnegreal) :
       (∃ R (ε1 : nonnegreal) (ε2 : cfg Λ -> nonnegreal),
           ⌜reducible e1 σ1⌝ ∗
@@ -589,6 +475,7 @@ Section exec_ub.
     }
     iSplit; done.
   Qed.
+  *)
 
   (* TODO: Maybe allow weakening of the grading *)
   Lemma exec_ub_state_step α e1 σ1 Z (ε ε' : nonnegreal) :
@@ -600,7 +487,7 @@ Section exec_ub.
     iIntros (?) "H".
     iDestruct "H" as (?) "(% & H)".
     rewrite {1}exec_ub_unfold.
-    iRight; iRight; iLeft.
+    iRight; iLeft.
     iApply big_orL_elem_of; eauto.
     iExists R2.
     iExists ε.
@@ -624,7 +511,7 @@ Section exec_ub.
   Proof.
     iIntros (?) "(% & % & % & %Hε & % & H)".
     rewrite {1}exec_ub_unfold.
-    iRight; iRight; iRight; iLeft.
+    iRight; iRight; iLeft.
     iApply big_orL_elem_of; eauto.
     iExists _,nnreal_zero,_.
     iSplit; [auto|].
@@ -641,7 +528,7 @@ Section exec_ub.
   Proof.
     iIntros "[%R [%ε1 [%ε2 (%Hsum & %Hlift & HΦ)]]]".
     rewrite (exec_ub_unfold _ _ _ ε).
-    iRight; iRight; iRight; iRight.
+    iRight; iRight; iRight.
     iExists R, ε1, ε2.
     iSplitR; [iPureIntro; simpl; lra|].
     iSplitR; [done|].
@@ -791,8 +678,8 @@ Proof.
   apply least_fixpoint_ne_outer; [|done].
   intros Ψ [ε' [e' σ']]. rewrite /exec_ub_pre.
   do 15 f_equiv.
-  { f_contractive. do 3 f_equiv. apply Hwp. }
-  { do 2 f_equiv. f_contractive. do 3 f_equiv. apply Hwp. }
+  f_contractive. do 3 f_equiv. apply Hwp.
+  (* { do 2 f_equiv. f_contractive. do 3 f_equiv. apply Hwp. } *)
 Qed.
 
 
@@ -830,10 +717,8 @@ Proof.
   apply least_fixpoint_ne_outer; [|done].
   intros ? [? []]. rewrite /exec_ub_pre.
   do 15 f_equiv.
-  { f_contractive. do 3 f_equiv. rewrite IH; [done|lia|].
-    intros ?. eapply dist_S, HΦ. }
-  { do 2 f_equiv. f_contractive. rewrite IH; [done|lia|].
-    intros ?. eapply dist_S, HΦ. }
+  f_contractive. do 3 f_equiv. rewrite IH; [done|lia|].
+  intros ?. eapply dist_S, HΦ.
 Qed.
 
 Global Instance ub_wp_proper s E e :
@@ -850,8 +735,7 @@ Proof.
   apply least_fixpoint_ne_outer; [|done].
   intros ? [? []]. rewrite /exec_ub_pre.
   do 15 f_equiv.
-  { f_contractive. do 6 f_equiv. }
-  { do 2 f_equiv. f_contractive. do 6 f_equiv. }
+  f_contractive. do 6 f_equiv.
 Qed.
 
 Lemma ub_wp_value_fupd' s E Φ v : WP of_val v @ s; E {{ Φ }} ⊣⊢ |={E}=> Φ v.
