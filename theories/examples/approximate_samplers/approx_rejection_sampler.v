@@ -85,7 +85,7 @@ Section basic.
         wp_bind (#_ - #_)%E; wp_pure.
         replace (S (S depth') - 1)%Z with (Z.of_nat (S depth')) by lia.
         wp_apply ("IH" with "Hcr HΦ").
-  Admitted.
+  Qed.
 
 
   (** (approximate) safety of the unbounded rejection sampler *)

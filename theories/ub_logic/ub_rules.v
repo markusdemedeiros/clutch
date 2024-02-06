@@ -1498,7 +1498,20 @@ Lemma twp_couple_randU_adv_comp (N : nat) z E (ε1 : nonnegreal) (ε2 : fin (S N
   (exists r, ∀ n, (ε2 n <= r)%R) →
   SeriesC (λ n, (1 / (S N)) * ε2 n)%R = (nonneg ε1) →
   [[{ € ε1 }]] randU #z @ E [[{ n, RET #n; € (ε2 n) }]].
-Proof. Admitted.
+Proof.
+  iIntros (? ? Hs Φ) "Hε HΦ".
+  rewrite /randU.
+  wp_pures.
+  wp_apply (twp_alloc_tape); eauto.
+  iIntros (α) "Hα".
+  wp_pures.
+  wp_apply twp_presample_adv_comp; [eauto | eapply Hs |].
+  iFrame.
+  simpl; iIntros (?) "[Hcr Hα]".
+  iApply (twp_rand_tape with "[$]").
+  iIntros "_".
+  iApply ("HΦ" with "[$]").
+Qed.
 
 
 Lemma wp_couple_randU_adv_comp (N : nat) z E (ε1 : nonnegreal) (ε2 : fin (S N) -> nonnegreal) :
@@ -1507,27 +1520,11 @@ Lemma wp_couple_randU_adv_comp (N : nat) z E (ε1 : nonnegreal) (ε2 : fin (S N)
   SeriesC (λ n, (1 / (S N)) * ε2 n)%R = (nonneg ε1) →
   {{{ € ε1 }}} randU #z @ E {{{ n, RET #n; € (ε2 n) }}}.
 Proof.
-  iIntros (? ? Hs Φ) "Hε HΦ".
-  rewrite /randU.
-  wp_pures.
-  wp_bind (alloc _)%E.
-  wp_apply (wp_alloc_tape); eauto.
-  iIntros (α) "Hα".
-  wp_pures.
-  wp_apply wp_presample_adv_comp; [eauto | eapply Hs |].
-  iFrame.
-  simpl; iIntros (?) "[Hcr Hα]".
-  iApply (wp_rand_tape with "[$]").
-  iIntros "!> _".
-  iApply ("HΦ" with "[$]").
-
-  (* FIXME: Move the above proof into the twp version once the twp work, and use the below proof here.
   iIntros.
   iApply (ub_twp_ub_wp_step' with "[$]").
-  wp_apply (twp_couple_rand_adv_comp with "[$]"); try done.
+  wp_apply (twp_couple_randU_adv_comp with "[$]"); try done.
   iIntros (?) "H1 H2". iModIntro.
   iApply ("H2" with "[$]").
-   *)
 Qed.
 
 (* FIXME: Strictly stronger; inline into the regular version *)
@@ -1567,10 +1564,46 @@ Qed.
    since then we'd get these for free, but since this is essentially
    erasure I'm not so sure we can do that here. *)
 
+Lemma twp_randU (N : nat) (z : Z) E :
+  TCEq N (Z.to_nat z) →
+  [[{ True }]] randU #z @ E [[{ (n : fin (S N)), RET #n; True }]].
+Proof.
+  iIntros (? Φ) "? HΦ".
+  rewrite /randU.
+  wp_pures.
+  wp_apply (twp_alloc_tape); eauto.
+  iIntros (α) "Hα".
+  wp_pures.
+  wp_apply (twp_rand_tape_empty with "[$]").
+  iIntros (?) "?".
+  by iApply "HΦ".
+Qed.
+
+
 Lemma wp_randU (N : nat) (z : Z) E :
   TCEq N (Z.to_nat z) →
   {{{ True }}} randU #z @ E {{{ (n : fin (S N)), RET #n; True }}}.
-Proof. Admitted.
+Proof.
+  iIntros.
+  iApply (ub_twp_ub_wp_step' with "[$]").
+  iApply (twp_randU with "[//]").
+  iIntros (?) "_ HΦ !>".
+  by iApply "HΦ".
+Qed.
+
+Lemma twp_randU_err_list_int (N : nat) (z : Z) (zs : list Z) E Φ :
+  TCEq N (Z.to_nat z) →
+  € (nnreal_div (nnreal_nat (length zs)) (nnreal_nat(N+1))) ∗
+  (∀ x : fin (S N), ⌜Forall (λ m, (Z.of_nat $ fin_to_nat x) ≠ m) zs⌝ -∗ Φ #x)
+  ⊢ WP randU #z @ E [{ Φ }].
+Proof.
+  iIntros (?) "[? ?]".
+  rewrite /randU.
+  wp_pures.
+  wp_apply (twp_alloc_tape); eauto.
+  iIntros (α) "Hα".
+  wp_pures.
+Admitted.
 
 
 Lemma wp_randU_err_list_int (N : nat) (z : Z) (zs : list Z) E Φ :
@@ -1579,12 +1612,8 @@ Lemma wp_randU_err_list_int (N : nat) (z : Z) (zs : list Z) E Φ :
   (∀ x : fin (S N), ⌜Forall (λ m, (Z.of_nat $ fin_to_nat x) ≠ m) zs⌝ -∗ Φ #x)
   ⊢ WP randU #z @ E {{ Φ }}.
 Proof.
-  iIntros (?) "[? ?]".
-  rewrite /randU.
-  wp_pures.
-  wp_apply (wp_alloc_tape); eauto.
-  iIntros (α) "Hα".
-  wp_pures.
+  iIntros (?) "[? HΦ]".
+  wp_apply ub_twp_ub_wp_step'.
 Admitted.
 
 
@@ -1594,6 +1623,7 @@ Lemma twp_randU_err (N : nat) (z : Z) (m : fin (S N)) E Φ :
   (∀ x, ⌜x ≠ m⌝ -∗ Φ #x)
   ⊢ WP randU #z @ E [{ Φ }].
 Proof.
+
 Admitted.
 
 
@@ -1634,12 +1664,6 @@ Lemma wp_randU_err_list_nat (N : nat) (z : Z) (ns : list nat) E Φ :
   ⊢ WP randU #z @ E {{ Φ }}.
 Proof. Admitted.
 
-Lemma twp_randU_err_list_int (N : nat) (z : Z) (zs : list Z) E Φ :
-  TCEq N (Z.to_nat z) →
-  € (nnreal_div (nnreal_nat (length zs)) (nnreal_nat(N+1))) ∗
-  (∀ x : fin (S N), ⌜Forall (λ m, (Z.of_nat $ fin_to_nat x) ≠ m) zs⌝ -∗ Φ #x)
-  ⊢ WP randU #z @ E [{ Φ }].
-Proof. Admitted.
 
 
 End rules.
