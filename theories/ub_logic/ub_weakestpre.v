@@ -177,38 +177,46 @@ Section exec_ub.
   Local Definition cfgO := (prodO (exprO Λ) (stateO Λ)).
 
 
+  (* Added the first hypothesis... should be OK if Z is just instantiated with exec_ub's *)
+  (* Might need a version that has a (ε' < 1) constraint for the uses in the WP *)
   Lemma exec_ub_mono_grading e1 σ1 (Z : nonnegreal -> cfg Λ → iProp Σ) (s : bool) (ε ε' : nonnegreal) :
     ⌜(ε <= ε')%R⌝ -∗
+    (∀ e σ (ε1 ε2 : nonnegreal), ⌜ (ε1 <= ε2)%R ⌝ -∗ Z ε1 (e, σ) -∗ Z ε2 (e, σ)) -∗
     exec_ub e1 σ1 Z (s, ε) -∗ exec_ub e1 σ1 Z (s, ε').
   Proof.
-    iIntros "Hleq H_ub". iRevert "Hleq".
+    iIntros "Hleq HmonoZ H_ub". iRevert "Hleq HmonoZ".
     rewrite /exec_ub /exec_ub'.
-    set (Φ := (λ x, ∀ (ε'' : nonnegreal), ((⌜(x.1.2 <= ε'' )%R⌝ -∗ (bi_least_fixpoint (exec_ub_pre Z) ((x.1.1, ε''), x.2)))))%I : prodO (prodO boolO NNRO) cfgO → iPropI Σ).
+    set (Φ := (λ x, ∀ (ε'' : nonnegreal),
+                 ((⌜(x.1.2 <= ε'' )%R⌝ -∗
+                  (∀ e σ (ε1 ε2 : nonnegreal), ⌜ (ε1 <= ε2)%R ⌝ -∗ Z ε1 (e, σ) -∗ Z ε2 (e, σ)) -∗
+                  (bi_least_fixpoint (exec_ub_pre Z) ((x.1.1, ε''), x.2)))))%I : prodO (prodO boolO NNRO) cfgO → iPropI Σ).
     assert (NonExpansive Φ).
     { intros n ((?&?)&(?&?)) ((?&?)&(?&?)) [[[=] [=]] [[=] [=]]]. by simplify_eq. }
     iPoseProof (least_fixpoint_ind (exec_ub_pre Z) Φ with "[]") as "H"; last first.
     { iApply ("H" with "H_ub"). }
     iIntros "!#" ([[s' ε''] [? σ']]). rewrite /exec_ub_pre.
-    iIntros "[(? & H)|[(% & % & % & % & % & % & H) | [ (% & % & % & % & % & % & % & H) | [ H | [H | H]]]]] %ε3 %Hleq' /="; simpl in Hleq'.
-    - rewrite least_fixpoint_unfold.
+    iIntros "[(? & HZ)|[(% & % & % & % & % & % & H) | [ (% & % & % & % & % & % & % & H) | [ H | [H | H]]]]] %ε3 %Hleq' /="; simpl in Hleq'.
+    - iIntros "HmonoZ".
+      rewrite least_fixpoint_unfold.
       iLeft; iFrame.
-      admit. (* ??? *)
-    - rewrite least_fixpoint_unfold.
+      iApply ("HmonoZ" with "[//]"); iFrame.
+    - iIntros "?".
+      rewrite least_fixpoint_unfold.
       iRight; iLeft. iExists _,_,_.
       iSplit; [done|].
       iSplit; [iPureIntro; etrans; done|].
       iSplit; [done|].
       iIntros (e2 σ2 Hr).
-      iApply ("H" with "[//]").
-      iPureIntro. simpl. lra.
-    - rewrite least_fixpoint_unfold.
+      iMod ("H" with "[//]") as "[_ H]"; iApply "H".
+    - iIntros "?".
+      rewrite least_fixpoint_unfold.
       iRight;iRight;iLeft. iExists _,_,_.
       iSplit; [|iSplit; [| iSplit; [| iSplit]]]; try done.
       { iPureIntro; etrans; done. }
       iIntros (e2 σ2 Hr).
-      iApply ("H" with "[//]").
-      iPureIntro. simpl. lra.
+      iMod ("H" with "[//]") as "[_ H]"; iApply "H".
     - rewrite least_fixpoint_unfold.
+      iIntros "?".
       iRight; iRight; iRight; iLeft.
       iInduction (get_active σ') as [| l] "IH".
       { rewrite big_orL_nil //. }
@@ -219,10 +227,10 @@ Section exec_ub.
         iSplit; [ iPureIntro; lra | ].
         iSplit; [ done | ].
         iIntros.
-        iApply ("H" with "[//]").
-        iPureIntro. simpl; lra.
+        iMod ("H" with "[//]") as "[_ H]"; iApply "H".
       + iRight. by iApply ("IH" with "Ht").
     - rewrite least_fixpoint_unfold.
+      iIntros "?".
       iRight; iRight; iRight; iRight; iLeft.
       iInduction (get_active σ') as [| l] "IH".
       { rewrite big_orL_nil //. }
@@ -234,26 +242,28 @@ Section exec_ub.
         iSplit; [ iPureIntro; lra | ].
         iSplit; [ done | ].
         iIntros.
-        iApply ("H" with "[//]").
-        iPureIntro. simpl; lra.
+        iMod ("H" with "[//]") as "[_ H]"; iApply "H".
       + iRight. by iApply ("IH" with "Ht").
     - rewrite least_fixpoint_unfold.
+      iIntros "?".
       iRight; iRight; iRight; iRight; iRight.
-      iDestruct "H" as "[%R [%ε1 [%ε2 (%Hsum & %Hlift & HΦ)]]]".
+      iDestruct "H" as "[%R [%ε1 [%ε2 (%Hsum & %Hlift & H)]]]".
       iExists R, ε1, ε2.
       iSplitR; [ iPureIntro; lra |].
       iSplitR; [ done |].
-      iIntros; iApply "HΦ"; done.
-  Admitted.
+      iIntros.
+      iMod ("H" with "[//]") as "[_ H]"; iApply "H".
+  Qed.
 
 
-  Lemma exec_ub_strong_mono e1 σ1 (Z1 Z2 : nonnegreal -> cfg Λ → iProp Σ) (ε ε' : nonnegreal) :
+  Lemma exec_ub_strong_mono e1 σ1 (Z1 Z2 : nonnegreal -> cfg Λ → iProp Σ) s (ε ε' : nonnegreal) :
     ⌜(ε <= ε')%R⌝ -∗
+    (∀ e σ (ε1 ε2 : nonnegreal), ⌜ (ε1 <= ε2)%R ⌝ -∗ Z2 ε1 (e, σ) -∗ Z2 ε2 (e, σ)) -∗
     (∀ e2 σ2 ε'', (⌜∃ σ, (prim_step e1 σ (e2, σ2) > 0)%R⌝ ∗ Z1 ε'' (e2, σ2) -∗ Z2 ε'' (e2, σ2))) -∗
-    exec_ub e1 σ1 Z1 ε -∗ exec_ub e1 σ1 Z2 ε'.
+    exec_ub e1 σ1 Z1 (s, ε) -∗ exec_ub e1 σ1 Z2 (s, ε').
   Proof.
-    iIntros "%Hleq HZ H_ub".
-    iApply exec_ub_mono_grading; auto.
+    iIntros "%Hleq HmonoZ2 HZ H_ub".
+    iApply (exec_ub_mono_grading with "[] HmonoZ2"); auto.
     iRevert "HZ".
     rewrite /exec_ub /exec_ub'.
     set (Φ := (λ x,(∀ e2 σ2 ε'', ⌜∃ σ, (prim_step x.2.1 σ (e2, σ2) > 0)%R⌝ ∗ Z1 ε'' (e2, σ2) -∗ Z2 ε'' (e2, σ2)) -∗
