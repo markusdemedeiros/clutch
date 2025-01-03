@@ -1575,19 +1575,46 @@ Section expr_measurability.
   Proof.
     apply /predeqP =>b.
     have D1 : [set e | shape_expr e = s] b -> expr_ST (gen_expr s) b.
-    { destruct b.
+    { apply (expr_pre_mut _ _ _ _ (fun s =>  forall b, [set e | shape_expr e = s] b -> expr_ST (gen_expr s) b)
+                                  (fun s =>  forall b, [set e | shape_val e = s] b -> val_ST (gen_val s) b)).
+      { move=>?.
+        move=> IH b0 Hb0.
+        (* If b0 starts with anything but val, it should cause a contradiction in Hb0*)
+        destruct b0; rewrite //=.
+        eexists _; [|done].
+        apply IH.
+        rewrite /shape_expr//= in Hb0.
+        inversion Hb0.
+        by rewrite /shape_val.
+      }
+      (** TODO: How similar are the other cases? How much can I automate? *)
+      { move=>??. (* Introduce all forall-quantified variables *)
+        admit.
+      }
+
+
+
+      all: admit.
+
+      (*
+      destruct b.
       all: move=> H.
       all: simpl in H.
       all: destruct s as [?|?|???|??|??|???|???|??|?|?|?|?|???|??|?|??|?|??| |?|?].
       all: rewrite /gen_expr/=.
       all: try done.
       all: admit.
+       *)
     }
     have D2 : expr_ST (gen_expr s) b -> [set e | shape_expr e = s] b.
-    { all: move=> H.
+    {
+      (*
+      all: move=> H.
       all: destruct s as [?|?|???|??|??|???|???|??|?|?|?|?|???|??|?|??|?|??| |?|?].
       all: simpl in H.
       all: admit.
+       *)
+      admit.
     }
     by split.
   Admitted.
@@ -4850,6 +4877,8 @@ Section meas_semantics.
    *)
 
 
+  (* FIXME: A definition in terms of projection preimages would be easier to prove that these are measurable,
+     hoever, this might make it harder to prove that the steps themselves are measurable. Which one is better?*)
   Definition cover_rec             : set cfg := [set c | ∃ f x e σ,      c = (Rec f x e, σ) ].
   Definition cover_pair            : set cfg := [set c | ∃ v1 v2 σ,      c = (Pair (Val v1) (Val v2), σ) ].
   Definition cover_injL            : set cfg := [set c | ∃ v σ,          c = (InjL v, σ) ].
@@ -4979,41 +5008,280 @@ Section meas_semantics.
 
 
 
-  Definition head_stepM_def (c : cfg) : giryM cfg :=
+
+  (** Defininng head_stepM *)
+
+  (** Stuck case(s) *)
+
+  Definition head_stepM_stuck_def (c : cfg) : giryM cfg := giryM_zero.
+
+  (* TODO: Can I get away with removing the measurable requirement from cover_set? *)
+  Lemma head_stepM_maybe_stuck_measurable (cover_set : set cfg) (H : measurable cover_set) :
+    measurable_fun cover_set head_stepM_stuck_def.
+  Proof. Admitted.
+
+
+  (** Trivial cases: Immediate that the both the cover sets and the restricted functions are measurable *)
+
+  Definition head_stepM_Rec_def (c : cfg) : giryM cfg :=
     let (e1, σ1) := c in
     match e1 with
-    | Rec f x e =>
-        giryM_ret R ((Val $ RecV f x e, σ1) : cfg)
-    | Pair (Val v1) (Val v2) =>
-        giryM_ret R ((Val $ PairV v1 v2, σ1) : cfg)
-    | InjL (Val v) =>
-        giryM_ret R ((Val $ InjLV v, σ1) : cfg)
-    | InjR (Val v) =>
-        giryM_ret R ((Val $ InjRV v, σ1) : cfg)
-    | App (Val (RecV f x e1)) (Val v2) =>
-        giryM_ret R ((subst' x v2 (subst' f (RecV f x e1) e1) , σ1) : cfg)
+    | Rec f x e => giryM_ret R ((Val $ RecV f x e, σ1) : cfg)
+    | _ => giryM_zero
+    end.
+
+  Lemma head_stepM_Rec_measurable : measurable_fun cover_rec head_stepM_Rec_def.
+  Proof. Admitted.
+
+  Definition head_stepM_Pair_def (c : cfg) : giryM cfg :=
+    let (e1, σ1) := c in
+    match e1 with
+    | Pair (Val v1) (Val v2) =>  giryM_ret R ((Val $ PairV v1 v2, σ1) : cfg)
+    | _ => giryM_zero
+    end.
+
+  Lemma head_stepM_Pair_measurable : measurable_fun cover_pair head_stepM_Pair_def.
+  Proof. Admitted.
+
+  Definition head_stepM_InjL_def (c : cfg) : giryM cfg :=
+    let (e1, σ1) := c in
+    match e1 with
+    | InjL (Val v) => giryM_ret R ((Val $ InjLV v, σ1) : cfg)
+    | _ => giryM_zero
+    end.
+
+  Lemma head_stepM_InjL_measurable : measurable_fun cover_injL head_stepM_InjL_def.
+  Proof. Admitted.
+
+
+  Definition head_stepM_InjR_def (c : cfg) : giryM cfg :=
+    let (e1, σ1) := c in
+    match e1 with
+    | InjR (Val v) => giryM_ret R ((Val $ InjRV v, σ1) : cfg)
+    | _ => giryM_zero
+    end.
+
+  Lemma head_stepM_InjR_measurable : measurable_fun cover_injR head_stepM_InjR_def.
+  Proof. Admitted.
+
+
+  Definition head_stepM_App_def (c : cfg) : giryM cfg :=
+    let (e1, σ1) := c in
+    match e1 with
+    | App (Val (RecV f x e1)) (Val v2) => giryM_ret R ((subst' x v2 (subst' f (RecV f x e1) e1) , σ1) : cfg)
+    | _ => giryM_zero
+    end.
+
+  Lemma head_stepM_App_measurable : measurable_fun cover_app head_stepM_App_def.
+  Proof. Admitted.
+
+  Definition head_stepM_ifT_def (c : cfg) : giryM cfg :=
+    let (e1, σ1) := c in
+    match e1 with
+    | If (Val (LitV (LitBool true))) e1 e2  => giryM_ret R ((e1 , σ1) : cfg)
+    | _ => giryM_zero
+    end.
+
+  Lemma head_stepM_ifT_measurable : measurable_fun cover_ifT head_stepM_ifT_def.
+  Proof. Admitted.
+
+  Definition head_stepM_ifF_def (c : cfg) : giryM cfg :=
+    let (e1, σ1) := c in
+    match e1 with
+    | If (Val (LitV (LitBool false))) e1 e2  => giryM_ret R ((e2 , σ1) : cfg)
+    | _ => giryM_zero
+    end.
+
+  Lemma head_stepM_ifF_measurable : measurable_fun cover_ifF head_stepM_ifF_def.
+  Proof. Admitted.
+
+
+  Definition head_stepM_fst_def (c : cfg) : giryM cfg :=
+    let (e1, σ1) := c in
+    match e1 with
+    | Fst (Val (PairV v1 v2)) => giryM_ret R ((Val v1 , σ1) : cfg) (* Syntax error when I remove the space between v1 and , *)
+    | _ => giryM_zero
+    end.
+
+  Lemma head_stepM_fst_measurable : measurable_fun cover_fst head_stepM_fst_def.
+  Proof. Admitted.
+
+  Definition head_stepM_snd_def (c : cfg) : giryM cfg :=
+    let (e1, σ1) := c in
+    match e1 with
+    | Snd (Val (PairV v1 v2)) => giryM_ret R ((Val v2, σ1) : cfg)
+    | _ => giryM_zero
+    end.
+
+  Lemma head_stepM_snd_measurable : measurable_fun cover_snd head_stepM_snd_def.
+  Proof. Admitted.
+
+  Definition head_stepM_caseL_def (c : cfg) : giryM cfg :=
+    let (e1, σ1) := c in
+    match e1 with
+    | Case (Val (InjLV v)) e1 e2 => giryM_ret R ((App e1 (Val v), σ1) : cfg)
+    | _ => giryM_zero
+    end.
+
+  Lemma head_stepM_caseL_measurable : measurable_fun cover_caseL head_stepM_caseL_def.
+  Proof. Admitted.
+
+
+  Definition head_stepM_caseR_def (c : cfg) : giryM cfg :=
+    let (e1, σ1) := c in
+    match e1 with
+    | Case (Val (InjRV v)) e1 e2 => giryM_ret R ((App e2 (Val v), σ1) : cfg)
+    | _ => giryM_zero
+    end.
+
+  Lemma head_stepM_caseR_measurable : measurable_fun cover_caseR head_stepM_caseR_def.
+  Proof. Admitted.
+
+
+  Definition head_stepM_alloctape_def (c : cfg) : giryM cfg :=
+    let (e1, σ1) := c in
+    match e1 with
+    | AllocTape (Val (LitV (LitInt z))) =>
+        let ι := fresh_loc σ1.(tapes) in
+        giryM_ret R ((Val $ LitV $ LitLbl ι, state_upd_tapes <[ι := {| btape_tape := emptyTape ; btape_bound := (Z.to_nat z) |} ]> σ1) : cfg)
+    | _ => giryM_zero
+    end.
+
+  Lemma head_stepM_alloctape_measurable : measurable_fun cover_alloctape head_stepM_alloctape_def.
+  Proof. Admitted.
+
+
+  Definition head_stepM_allocutape_def (c : cfg) : giryM cfg :=
+    let (e1, σ1) := c in
+    match e1 with
+    | AllocUTape =>
+        let ι := fresh_loc σ1.(utapes) in
+        giryM_ret R ((Val $ LitV $ LitLbl ι, state_upd_utapes <[ ι := emptyTape ]> σ1) : cfg)
+    | _ => giryM_zero
+    end.
+
+  Lemma head_stepM_allocutape_measurable : measurable_fun cover_allocutape head_stepM_allocutape_def.
+  Proof. Admitted.
+
+
+  Definition head_stepM_tick_def (c : cfg) : giryM cfg :=
+    let (e1, σ1) := c in
+    match e1 with
+    | Tick (Val (LitV (LitInt n))) => giryM_ret R ((Val $ LitV $ LitUnit, σ1) : cfg)
+    | _ => giryM_zero
+    end.
+
+  Lemma head_stepM_tick_measurable : measurable_fun cover_tick head_stepM_tick_def.
+  Proof. Admitted.
+
+
+
+  (** Easy cases: Cover set is trivial, function is randomized *)
+
+  Definition head_stepM_randT_notape_def (c : cfg) : giryM cfg :=
+    let (e1, σ1) := c in
+    match e1 with
+    | Rand (Val (LitV (LitInt N))) (Val (LitV LitUnit)) =>
+        giryM_map
+          (m_discr (fun (n : 'I_(S (Z.to_nat N))) => ((Val $ LitV $ LitInt $ fin_to_nat n, σ1) : cfg)))
+          (giryM_unif (Z.to_nat N))
+    | _ => giryM_zero
+    end.
+
+  Lemma head_stepM_randT_notape_measurable : measurable_fun cover_randT_notape head_stepM_randT_notape_def.
+  Proof. Admitted.
+
+  Definition head_stepM_urandT_notape_def (c : cfg) : giryM cfg :=
+    let (e1, σ1) := c in
+    match e1 with
+    | URand (Val (LitV LitUnit)) => giryM_zero (* FIXME giryM_map urand_step unif_base *)
+    | _ => giryM_zero
+    end.
+
+  Lemma head_stepM_urandT_notape_measurable : measurable_fun cover_urandT_notape head_stepM_urandT_notape_def.
+  Proof. Admitted.
+
+
+  (** Easy cases: Cover set is nontrivial, but the function is simple *)
+
+
+  Definition head_stepM_unop_ok_def (c : cfg) : giryM cfg :=
+    let (e1, σ1) := c in
+    match e1 with
     | UnOp op (Val v) =>
         match un_op_eval op v with
           | Some w => giryM_ret R ((Val w, σ1) : cfg)
           | _ => giryM_zero
+        end
+    | _ => giryM_zero
+    end.
+
+  Lemma head_stepM_unop_ok_measurable : measurable_fun cover_unop_ok head_stepM_unop_ok_def.
+  Proof. Admitted.
+
+ (* Measurability: Union over the type of UnOps, of shapes *)
+
+  Lemma head_stepM_unop_stuck_measurable : measurable_fun cover_unop_stuck head_stepM_stuck_def.
+  Proof. Admitted.
+
+
+  Definition head_stepM_binop_ok_def (c : cfg) : giryM cfg :=
+    let (e1, σ1) := c in
+    match e1 with
+    | BinOp op (Val v1) (Val v2) =>
+        match bin_op_eval op v1 v2 with
+          | Some w => giryM_ret R ((Val w, σ1) : cfg)
+          | _ => giryM_zero
+        end
+    | _ => giryM_zero
+    end.
+
+  Lemma head_stepM_ _measurable : measurable_fun cover_ head_stepM_ _def.
+  Proof. Admitted.
+
+
+
+
+
+
+(*
+  Definition head_stepM_ _def (c : cfg) : giryM cfg :=
+    let (e1, σ1) := c in
+    match e1 with
+    | _ => giryM_zero
+    end.
+
+  Lemma head_stepM_ _measurable : measurable_fun cover_ head_stepM_ _def.
+  Proof. Admitted.
+*)
+
+
+
+
+  Definition head_stepM_def (c : cfg) : giryM cfg :=
+    let (e1, σ1) := c in
+    match e1 with
+    | Rec f x e                               => head_stepM_Rec_def c
+    | Pair (Val v1) (Val v2)                  => head_stepM_Pair_def c
+    | InjL (Val v)                            => head_stepM_InjL_def c
+    | InjR (Val v)                            => head_stepM_InjR_def c
+    | App (Val (RecV f x e1)) (Val v2)        => head_stepM_App_def c
+    | UnOp op (Val v) =>
+        match un_op_eval op v with
+          | Some _                            => head_stepM_unop_ok_def c
+          | _                                 => head_stepM_stuck_def c
         end
     | BinOp op (Val v1) (Val v2) =>
         match bin_op_eval op v1 v2 with
           | Some w => giryM_ret R ((Val w, σ1) : cfg)
           | _ => giryM_zero
         end
-    | If (Val (LitV (LitBool true))) e1 e2  =>
-        giryM_ret R ((e1 , σ1) : cfg)
-    | If (Val (LitV (LitBool false))) e1 e2 =>
-        giryM_ret R ((e2 , σ1) : cfg)
-    | Fst (Val (PairV v1 v2)) =>
-        giryM_ret R ((Val v1 , σ1) : cfg) (* Syntax error when I remove the space between v1 and , *)
-    | Snd (Val (PairV v1 v2)) =>
-        giryM_ret R ((Val v2, σ1) : cfg)
-    | Case (Val (InjLV v)) e1 e2 =>
-        giryM_ret R ((App e1 (Val v), σ1) : cfg)
-    | Case (Val (InjRV v)) e1 e2 =>
-        giryM_ret R ((App e2 (Val v), σ1) : cfg)
+    | If (Val (LitV (LitBool true))) e1 e2    => head_stepM_ifT_def c
+    | If (Val (LitV (LitBool false))) e1 e2   => head_stepM_ifF_def c
+    | Fst (Val (PairV v1 v2))                 => head_stepM_fst_def c
+    | Snd (Val (PairV v1 v2))                 => head_stepM_snd_def c
+    | Case (Val (InjLV v)) e1 e2              => head_stepM_caseL_def c
+    | Case (Val (InjRV v)) e1 e2              => head_stepM_caseR_def c
     | AllocN (Val (LitV (LitInt N))) (Val v) =>
         let ℓ := fresh_loc σ1.(heap) in
         if bool_decide (0 < Z.to_nat N)%nat
@@ -5030,13 +5298,8 @@ Section meas_semantics.
           | None => giryM_zero
         end
     (* Uniform sampling from [0, 1 , ..., N] *)
-    | Rand (Val (LitV (LitInt N))) (Val (LitV LitUnit)) =>
-        giryM_map
-          (m_discr (fun (n : 'I_(S (Z.to_nat N))) => ((Val $ LitV $ LitInt $ fin_to_nat n, σ1) : cfg)))
-          (giryM_unif (Z.to_nat N))
-    | AllocTape (Val (LitV (LitInt z))) =>
-        let ι := fresh_loc σ1.(tapes) in
-        giryM_ret R ((Val $ LitV $ LitLbl ι, state_upd_tapes <[ι := {| btape_tape := emptyTape ; btape_bound := (Z.to_nat z) |} ]> σ1) : cfg)
+    | Rand (Val (LitV (LitInt N))) (Val (LitV LitUnit)) => head_stepM_randT_notape_def c
+    | AllocTape (Val (LitV (LitInt z)))                 => head_stepM_alloctape_def c
     (* Rand with a tape *)
     | Rand (Val (LitV (LitInt N))) (Val (LitV (LitLbl l))) =>
         match σ1.(tapes) !! l with
@@ -5071,11 +5334,9 @@ Section meas_semantics.
                 (giryM_unif (Z.to_nat N))
         | None => giryM_zero
         end
-    | AllocUTape =>
-        let ι := fresh_loc σ1.(utapes) in
-        giryM_ret R ((Val $ LitV $ LitLbl ι, state_upd_utapes <[ ι := emptyTape ]> σ1) : cfg)
+    | AllocUTape                 => head_stepM_allocutape_def c
     (* Urand with no tape *)
-    | URand (Val (LitV LitUnit)) => giryM_zero (* FIXME giryM_map urand_step unif_base *)
+    | URand (Val (LitV LitUnit)) => head_stepM_urandT_notape_def c
     (* Urand with a tape *)
     | URand (Val (LitV (LitLbl l))) =>
         match σ1.(utapes) !! l with
@@ -5093,8 +5354,8 @@ Section meas_semantics.
             end
         | None => giryM_zero
         end
-    | Tick (Val (LitV (LitInt n))) => giryM_ret R ((Val $ LitV $ LitUnit, σ1) : cfg)
-    | _ => giryM_zero
+    | Tick (Val (LitV (LitInt n))) => head_stepM_tick_def c
+    | _                            => head_stepM_stuck_def c
     end.
 
 
